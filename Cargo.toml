@@ -1,0 +1,56 @@
+[package]
+name = "blinky"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+axum = { version = "0.8", features = ["macros"] }
+tokio = { version = "1", features = ["full"] }
+tower = "0.5"
+tower-http = { version = "0.6", features = ["trace", "cors", "limit"] }
+trait-variant = "0.1"
+
+serde = { version = "1", features = ["derive"] }
+serde_with = "3.14"
+serde_json = "1"
+
+thiserror = "2"
+anyhow = "1"
+
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "time"] }
+tracing-log = "0.2"
+tracing-bunyan-formatter = "0.3"
+tracing-appender = "0.2"
+
+config = "0.15"
+dotenvy = "0.15"
+
+url = { version = "2", features = ["serde"] }
+rand = "0.9"
+chrono = { version = "0.4", features = ["clock", "serde"] }
+
+uuid = { version = "1", features = ["v4", "v7", "serde"] }
+
+
+# Postgres + Redis
+sqlx = { version = "0.8", default-features = false, features = [
+    "runtime-tokio",
+    "postgres",
+    "chrono",
+    "macros",
+    "migrate",
+] }
+redis = { version = "0.32", features = ["tokio-comp"] }
+deadpool-redis = { version = "0.22", features = ["rt_tokio_1"] }
+
+# Testing
+http-body-util = "0.1"
+
+[dev-dependencies]
+http = "1"
+tokio = { version = "1", features = ["full", "test-util"] }
+serde_json = "1"
+# for handler/unit tests
+tower = "0.5"
+axum = { version = "0.8", features = ["macros"] }

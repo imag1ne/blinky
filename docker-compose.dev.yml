@@ -1,0 +1,95 @@
+services:
+  db:
+    image: postgres:17.5-alpine
+    container_name: blinky_db_dev
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: blinky
+      BLINKY_DB_PASSWORD: ${BLINKY_DB_PASSWORD:-blinky}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data_dev:/var/lib/postgresql/data
+      - ./docker-init-db.sh:/docker-entrypoint-initdb.d/init-db.sh:ro
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis-cache:
+    image: redis:8.2-alpine
+    container_name: blinky_redis_cache_dev
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_cache_data_dev:/data
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru --appendonly no --save ""
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  redis-queue:
+    image: redis:8.2-alpine
+    container_name: blinky_redis_queue_dev
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis_queue_data_dev:/data
+    command: >
+      redis-server --maxmemory-policy noeviction --appendonly yes --appendfsync everysec
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile.migrate
+    container_name: blinky_migrate_dev
+    environment:
+      # Use postgres superuser for migrations (needs CREATE TABLE privileges)
+      DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD:-postgres}@db:5432/blinky
+    volumes:
+      # Mount migrations directory
+      - ./migrations:/migrations:ro
+    depends_on:
+      db:
+        condition: service_healthy
+    # Run once and exit - don't restart on success
+    restart: "no"
+
+  # Blinky Application - Development Configuration
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: blinky_app_dev
+    ports:
+      - "8080:8080"
+    environment:
+      DATABASE_URL: postgres://blinky:${BLINKY_DB_PASSWORD:-blinky}@db:5432/blinky
+      REDIS_CACHE_URL: redis://redis-cache:6379
+      REDIS_QUEUE_URL: redis://redis-queue:6379
+      RUST_LOG: ${RUST_LOG:-debug}
+      APP_HOST: 0.0.0.0
+      APP_PORT: 8080
+    depends_on:
+      db:
+        condition: service_healthy
+      redis-cache:
+        condition: service_healthy
+      redis-queue:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+volumes:
+  postgres_data_dev:
+  redis_cache_data_dev:
+  redis_queue_data_dev:

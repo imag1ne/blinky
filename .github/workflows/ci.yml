@@ -1,0 +1,229 @@
+name: Rust
+
+on:
+  push:
+    branches: [ main, dev ]
+  pull_request:
+    branches: [ main, dev ]
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_DB: blinky_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:8-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    env:
+      SQLX_VERSION: ^0.8
+      SQLX_FEATURES: '["rustls", "postgres"]'
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/blinky_test
+      TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/blinky_test
+      REDIS_URL: redis://localhost:6379
+      TEST_REDIS_URL: redis://localhost:6379
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Install Rust stable toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/registry/index
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-registry-
+
+      - name: Cache cargo index
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/registry/cache
+          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-index-
+
+      - name: Cache cargo build
+        uses: actions/cache@v4
+        with:
+          path: target
+          key: ${{ runner.os }}-cargo-build-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-build-
+
+      - name: Cache sqlx-cli
+        uses: actions/cache@v4
+        id: cache-sqlx
+        with:
+          path: ~/.cargo/bin/sqlx
+          key: ${{ runner.os }}-sqlx-${{ env.SQLX_VERSION }}-${{ join(fromJson(env.SQLX_FEATURES), '-') }}
+          restore-keys: |
+            ${{ runner.os }}-sqlx-
+
+      - name: Install sqlx-cli
+        if: steps.cache-sqlx.outputs.cache-hit == false
+        run: |
+          cargo install sqlx-cli \
+            --force \
+            --version=${{ env.SQLX_VERSION }} \
+            --features=${{ join(fromJson(env.SQLX_FEATURES), ',') }} \
+            --no-default-features \
+            --locked
+
+      - name: Run migrations
+        run: sqlx migrate run
+
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+
+      - name: Run clippy
+        run: cargo clippy -- -D warnings
+
+      - name: Build
+        run: cargo build --verbose
+
+      - name: Run tests
+        run: cargo test --verbose
+
+      - name: Run ignored integration tests
+        run: cargo test --verbose -- --ignored
+
+  coverage:
+    name: Code Coverage
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_DB: blinky_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:8-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    env:
+      SQLX_VERSION: ^0.8
+      SQLX_FEATURES: '["rustls", "postgres"]'
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/blinky_test
+      TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/blinky_test
+      REDIS_URL: redis://localhost:6379
+      TEST_REDIS_URL: redis://localhost:6379
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Install Rust stable toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/registry/index
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-registry-
+
+      - name: Cache cargo index
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/registry/cache
+          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-index-
+
+      - name: Cache cargo build
+        uses: actions/cache@v4
+        with:
+          path: target
+          key: ${{ runner.os }}-cargo-build-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-build-
+
+      - name: Cache cargo-tarpaulin
+        uses: actions/cache@v4
+        id: cache-tarpaulin
+        with:
+          path: ~/.cargo/bin/cargo-tarpaulin
+          key: ${{ runner.os }}-tarpaulin
+          restore-keys: |
+            ${{ runner.os }}-tarpaulin-
+
+      - name: Install cargo-tarpaulin
+        if: steps.cache-tarpaulin.outputs.cache-hit == false
+        run: cargo install cargo-tarpaulin
+
+      - name: Cache sqlx-cli
+        uses: actions/cache@v4
+        id: cache-sqlx
+        with:
+          path: ~/.cargo/bin/sqlx
+          key: ${{ runner.os }}-sqlx-${{ env.SQLX_VERSION }}-${{ join(fromJson(env.SQLX_FEATURES), '-') }}
+          restore-keys: |
+            ${{ runner.os }}-sqlx-
+
+      - name: Install sqlx-cli
+        if: steps.cache-sqlx.outputs.cache-hit == false
+        run: |
+          cargo install sqlx-cli \
+            --force \
+            --version=${{ env.SQLX_VERSION }} \
+            --features=${{ join(fromJson(env.SQLX_FEATURES), ',') }} \
+            --no-default-features \
+            --locked
+
+      - name: Run migrations
+        run: sqlx migrate run
+
+      - name: Generate coverage
+        run: cargo tarpaulin --verbose --all-features --workspace --timeout 120 --out xml
+
+      - name: Upload coverage to Codecov
+        if: env.CODECOV_TOKEN != ''
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ env.CODECOV_TOKEN }}
+          files: ./cobertura.xml

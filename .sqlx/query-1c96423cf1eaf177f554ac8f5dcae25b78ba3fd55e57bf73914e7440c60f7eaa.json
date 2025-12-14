@@ -1,0 +1,34 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                su.id AS short_code_id,\n                ua.click_count AS click_count,\n                ua.last_clicked_at AS last_clicked_at\n            FROM short_urls AS su\n            INNER JOIN\n                url_analytics AS ua\n                ON su.id = ua.short_url_id\n            WHERE su.short_code = $1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "short_code_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "click_count",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "last_clicked_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "1c96423cf1eaf177f554ac8f5dcae25b78ba3fd55e57bf73914e7440c60f7eaa"
+}
