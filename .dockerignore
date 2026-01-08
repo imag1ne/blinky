@@ -1,0 +1,68 @@
+# Build artifacts
+target/
+**/target/
+
+# Keep SQLx offline data
+!.sqlx/
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*.swn
+*.bak
+**/.DS_Store
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Documentation
+README.md
+docs/
+*.md
+!migrations/**
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+
+# Docker
+docker-compose*.yml
+Dockerfile*
+.dockerignore
+
+# Test files
+tests/
+**/*_test.rs
+**/*.rs.bk
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+tmp/
+temp/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Linux
+*~
+.directory
+
+# Coverage
+coverage/
+*.profdata
+*.profraw
+cobertura.xml

@@ -1,0 +1,32 @@
+# Build artifacts
+/target
+**/target/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*.swn
+*.bak
+
+# OS files
+.DS_Store
+
+# Logs and coverage
+*.log
+coverage/
+*.profraw
+*.profdata
+cobertura.xml
+
+# Docker / Compose overrides
+docker-compose*.override.yml
+
+# Misc temporary files
+.tmp
